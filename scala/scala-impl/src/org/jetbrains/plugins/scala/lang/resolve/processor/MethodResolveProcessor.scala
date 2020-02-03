@@ -285,18 +285,23 @@ object MethodResolveProcessor {
               case tpe => tpe
             }
 
-            val expr = Expression(withUndefParams.inferValueType, ref)
+            val functionType = withUndefParams.inferValueType
+            val expr         = Expression(functionType, ref)
 
-            expr.getTypeAfterImplicitConversion(
-              checkImplicits = true,
-              isShape        = false,
-              Option(expectedType)
-            ).tr.toOption
+            val afterConversions =
+              expr.getTypeAfterImplicitConversion(
+                checkImplicits = true,
+                isShape        = false,
+                Option(expectedType)
+              ).tr.toOption
+
+            if (!afterConversions.contains(functionType)) afterConversions
+            else                                          Option(withUndefParams)
           }
 
         val constraints =
           typeAfterConversions.map(tpe =>
-            substitutor(tpe).conforms(expectedType, ConstraintSystem.empty)
+            substitutor(tpe).isConservativelyCompatible(expectedType)
           ).getOrElse(ConstraintsResult.Left)
 
         constraints match {
